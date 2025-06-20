@@ -31,7 +31,7 @@ with st.form("problem_form"):
     col1, col2, col3 = st.columns(3)
     with col1:
         date = st.date_input("Data", datetime.date.today())
-        order_no = st.text_input("Užsakymo nr.")
+        order_no = st.text_input("Užsakymo nr./Sąskaitos nr.")
         klientas = st.text_input("Klientas")
     with col2:
         problem = st.text_area("Problemos aprašymas")
