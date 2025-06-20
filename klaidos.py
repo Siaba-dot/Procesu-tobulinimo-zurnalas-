@@ -4,7 +4,6 @@ import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Puslapio nustatymai
 st.set_page_config(page_title="Problemų registravimo sistema", layout="wide")
 st.title("🔍 Verslo problemų registravimo ir analizės sistema")
 
@@ -25,9 +24,22 @@ worksheet = sheet.worksheet(worksheet_name)
 records = worksheet.get_all_records()
 df = pd.DataFrame(records)
 
-# Naujos problemos registravimo forma
-st.markdown("### ✏️ Naujos problemos registravimas")
+# Normalizuoti stulpelių pavadinimus
+df.columns = [col.strip() for col in df.columns]
+df.rename(columns={
+    "DATA": "Data",
+    "Užsakymo nr.": "Užsakymo nr.",
+    "Problemos aprašymas": "Problemos aprašymas",
+    "Pasekmė": "Pasekmė",
+    "Skyrius": "Skyrius",
+    "Atsakingas asmuo": "Atsakingas asmuo",
+    "Sprendimas": "Sprendimas",
+    "Ar buvo informuota laiku? (Taip/Ne)": "Ar buvo informuota laiku?",
+    "Pastabos": "Pastabos"
+}, inplace=True)
 
+# Forma naujam įrašui
+st.markdown("### ✏️ Naujos problemos registravimas")
 with st.form("problem_form"):
     col1, col2, col3 = st.columns(3)
 
@@ -62,31 +74,29 @@ with st.form("problem_form"):
             notes
         ]
         worksheet.append_row(new_row)
-        st.success("Problema įregistruota sėkmingai!")
-        st.rerun()
+        st.success("✅ Problema įregistruota sėkmingai!")
+        st.rerun()  # vietoj experimental_rerun()
 
-# Rodyti registruotas problemas
+# Rodyti esamus įrašus ir analizę
 if not df.empty:
     st.markdown("### 📊 Registruotų problemų sąrašas")
     st.dataframe(df, use_container_width=True)
 
-    # CSV atsisiuntimo mygtukas
+    # CSV atsisiuntimas
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("🗂️ Atsisiųsti kaip CSV", csv, "registruotos_problemos.csv", "text/csv")
+    st.download_button("🗂️ Atsisiųsti CSV", csv, "registruotos_problemos.csv", "text/csv")
 
-    # Paprasta analizė
-    st.markdown("### 📊 Paprasta analizė")
+    # Analizė
+    st.markdown("### 📈 Paprasta analizė")
     col_a, col_b = st.columns(2)
 
     with col_a:
-        by_person = df["Atsakingas asmuo"].value_counts()
-        st.bar_chart(by_person)
+        st.bar_chart(df["Atsakingas asmuo"].value_counts())
 
     with col_b:
-        by_department = df["Skyrius"].value_counts()
-        st.bar_chart(by_department)
+        st.bar_chart(df["Skyrius"].value_counts())
 
     if "Ne" in df["Ar buvo informuota laiku?"].values:
-        st.warning("Yra problemų, apie kurias nebuvo pranešta laiku. Reikalingas komunikacijos stiprinimas.")
+        st.warning("⚠️ Yra problemų, apie kurias nebuvo pranešta laiku. Reikalingas komunikacijos stiprinimas.")
 else:
-    st.info("Kol kas nėra registruotų problemų.")
+    st.info("ℹ️ Kol kas nėra registruotų problemų.")
