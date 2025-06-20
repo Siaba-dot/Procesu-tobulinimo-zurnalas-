@@ -62,7 +62,7 @@ with st.form("problem_form"):
         ]
         worksheet.append_row(new_row)
         st.success("✅ Problema įregistruota sėkmingai!")
-        st.experimental_rerun()
+        st.rerun()
 
 # Rodymas
 if not df.empty:
