@@ -4,6 +4,7 @@ import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
+# Puslapio nustatymai
 st.set_page_config(page_title="Problemų registravimo sistema", layout="wide")
 st.title("🔍 Verslo problemų registravimo ir analizės sistema")
 
@@ -24,9 +25,8 @@ worksheet = sheet.worksheet(worksheet_name)
 records = worksheet.get_all_records()
 df = pd.DataFrame(records)
 
-st.markdown("""
-### ✏️ Naujos problemos registravimas
-""")
+# Naujos problemos registravimo forma
+st.markdown("### ✏️ Naujos problemos registravimas")
 
 with st.form("problem_form"):
     col1, col2, col3 = st.columns(3)
@@ -63,22 +63,19 @@ with st.form("problem_form"):
         ]
         worksheet.append_row(new_row)
         st.success("Problema įregistruota sėkmingai!")
-        st.experimental_rerun()
+        st.rerun()
 
-# Rodyti duomenis
+# Rodyti registruotas problemas
 if not df.empty:
-    st.markdown("""
-    ### 📊 Registruotų problemų sąrašas
-    """)
+    st.markdown("### 📊 Registruotų problemų sąrašas")
     st.dataframe(df, use_container_width=True)
 
+    # CSV atsisiuntimo mygtukas
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("🗂️ Atsisiųsti kaip CSV", csv, "registruotos_problemos.csv", "text/csv")
 
     # Paprasta analizė
-    st.markdown("""
-    ### 📊 Paprasta analizė
-    """)
+    st.markdown("### 📊 Paprasta analizė")
     col_a, col_b = st.columns(2)
 
     with col_a:
