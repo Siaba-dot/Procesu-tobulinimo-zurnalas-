@@ -1,45 +1,54 @@
 import streamlit as st
 import pandas as pd
+import datetime
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import date
+from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 
-# Google Sheets prisijungimas
+st.set_page_config(page_title="Problemų registravimo sistema", layout="wide")
+st.title("🔍 Verslo problemų registravimo ir analizės sistema")
+
+# Google Sheets nustatymai
+sheet_id = "1aWqYAcEuAEyV4vbnvsZt475Dc4pg2lNe_EoNX-G-rtY"
+worksheet_name = "Sheet1"
+
+# Prisijungimas
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = ServiceAccountCredentials.from_json_keyfile_name("tavo_failas.json", scope)
-gc = gspread.authorize(credentials)
+credentials = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+client = gspread.authorize(credentials)
+worksheet = client.open_by_key(sheet_id).worksheet(worksheet_name)
 
-# Pasirink Google Sheets dokumentą ir lentelę
-spreadsheet = gc.open_by_url("https://docs.google.com/spreadsheets/d/...")
-worksheet = spreadsheet.sheet1
+# Gauti duomenis
+records = worksheet.get_all_records()
+headers = worksheet.row_values(1)
+df = pd.DataFrame(records)
+if df.empty:
+    df = pd.DataFrame(columns=headers)
 
-# Įkeliami duomenys į DataFrame
-data = worksheet.get_all_records()
-df = pd.DataFrame(data)
+# Forma
+st.markdown("### ✏️ Naujos problemos registravimas")
+with st.form("problem_form"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        date = st.date_input("Data", datetime.date.today())
+        order_no = st.text_input("Užsakymo nr.")
+        klientas = st.text_input("Klientas")
+    with col2:
+        problem = st.text_area("Problemos aprašymas")
+        consequence = st.text_area("Pasekmė")
+        tiekejas = st.text_input("Tiekėjas")
+    with col3:
+        department = st.text_input("Skyrius")
+        responsible = st.text_input("Atsakingas asmuo")
 
-# Puslapio pavadinimas
-st.title("🔧 Probleminių situacijų registras")
-
-# --- Duomenų įvedimo forma ---
-with st.form("problemos_forma"):
-    st.subheader("➕ Registruoti naują problemą")
-    date_input = st.date_input("Data", value=date.today())
-    order_no = st.text_input("Užsakymo nr.")
-    problem = st.text_area("Problemos aprašymas")
-    consequence = st.text_area("Pasekmė")
-    department = st.text_input("Skyrius")
-    responsible = st.text_input("Atsakingas asmuo")
-    klientas = st.text_input("Klientas")
-    tiekejas = st.text_input("Tiekėjas")
     solution = st.text_input("Sprendimas")
     informed = st.selectbox("Ar buvo informuota laiku?", ["Taip", "Ne"])
     notes = st.text_area("Pastabos")
-    submit = st.form_submit_button("➕ Pridėti problemą")
+    submitted = st.form_submit_button("➕ Pridėti problemą")
 
-    if submit:
-        nauja_eilute = [
-            date_input.strftime("%Y-%m-%d"),
+    if submitted:
+        new_row = [
+            date.strftime("%Y-%m-%d"),
             order_no,
             problem,
             consequence,
@@ -51,45 +60,44 @@ with st.form("problemos_forma"):
             informed,
             notes
         ]
-        worksheet.append_row(nauja_eilute)
-        st.success("✅ Problema sėkmingai įrašyta!")
+        worksheet.append_row(new_row)
+        st.success("✅ Problema įregistruota sėkmingai!")
+        st.experimental_rerun()
 
-# --- Duomenų atvaizdavimas ---
-st.subheader("📋 Registruotų problemų sąrašas")
-st.dataframe(df)
+# Rodymas
+if not df.empty:
+    st.markdown("### 📋 Registruotų problemų sąrašas")
+    st.dataframe(df, use_container_width=True)
 
-# --- Atsisiuntimas ---
-st.download_button("📁 Atsisiųsti CSV", data=df.to_csv(index=False), file_name="problemos.csv", mime="text/csv")
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button("⬇️ Atsisiųsti kaip CSV", csv, "problemos.csv", "text/csv")
 
-# --- Paprasta analizė ---
-st.subheader("📊 Paprasta analizė")
+    # Analizė
+    st.markdown("### 📊 Analizė")
+    if "Data" in df.columns:
+        df["Data"] = pd.to_datetime(df["Data"])
+        df["Metai-mėnuo"] = df["Data"].dt.to_period("M").astype(str)
+        klaidos_per_men = df.groupby("Metai-mėnuo").size()
 
-# Paruošiame datą analizavimui
-df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
-df["Mėnuo"] = df["Data"].dt.to_period("M").astype(str)
+        fig1, ax1 = plt.subplots()
+        klaidos_per_men.plot(kind="line", marker="o", ax=ax1)
+        ax1.set_title("📈 Klaidos pagal mėnesius")
+        ax1.set_xlabel("Metai-Mėnuo")
+        ax1.set_ylabel("Klaidos")
+        st.pyplot(fig1)
 
-# Linijinis grafikas pagal mėnesius
-mėnesiai = df.groupby("Mėnuo").size()
+        pasirinktas = st.selectbox("Pasirink mėnesį analizei", klaidos_per_men.index)
+        df_pas = df[df["Metai-mėnuo"] == pasirinktas]
 
-fig1, ax1 = plt.subplots()
-ax1.plot(mėnesiai.index, mėnesiai.values, marker="o")
-ax1.set_title("Klaidų skaičius pagal mėnesius")
-ax1.set_ylabel("Klaidų kiekis")
-ax1.set_xlabel("Mėnuo")
-st.pyplot(fig1)
+        if not df_pas.empty and "Skyrius" in df_pas.columns:
+            fig2, ax2 = plt.subplots()
+            df_pas["Skyrius"].value_counts().plot(kind="pie", autopct="%1.1f%%", ax=ax2)
+            ax2.set_ylabel("")
+            ax2.set_title(f"🎯 Klaidos pagal skyrių ({pasirinktas})")
+            st.pyplot(fig2)
 
-# Skritulinė diagrama pagal pasirinktą mėnesį
-pasirinktas_mėnuo = st.selectbox("Pasirink mėnesį skritulinei diagramai", df["Mėnuo"].unique())
-
-if pasirinktas_mėnuo:
-    df_filtruotas = df[df["Mėnuo"] == pasirinktas_mėnuo]
-    grupuota = df_filtruotas["Skyrius"].value_counts()
-
-    if not grupuota.empty:
-        fig2, ax2 = plt.subplots()
-        ax2.pie(grupuota, labels=grupuota.index, autopct='%1.1f%%')
-        ax2.set_title(f"Klaidų pasiskirstymas ({pasirinktas_mėnuo})")
-        st.pyplot(fig2)
-    else:
-        st.info("Pasirinktame mėnesyje nėra duomenų.")
-
+    if "Ar buvo informuota laiku?" in df.columns:
+        if "Ne" in df["Ar buvo informuota laiku?"].values:
+            st.warning("⚠️ Yra problemų, apie kurias nebuvo informuota laiku. Reikalinga komunikacijos stiprinimas.")
+else:
+    st.info("🔎 Kol kas nėra registruotų problemų.")
