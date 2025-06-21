@@ -1,5 +1,4 @@
-with open("/mnt/data/klaidos_ai_analize.py", "w", encoding="utf-8") as f:
-    f.write("""
+
 import streamlit as st
 import pandas as pd
 import datetime
