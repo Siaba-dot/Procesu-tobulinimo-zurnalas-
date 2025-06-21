@@ -4,7 +4,7 @@ import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
-import openai
+from openai import OpenAI
 
 st.set_page_config(page_title="Problemų registravimo sistema", layout="wide")
 st.title("🔍 Verslo problemų registravimo ir analizės sistema")
@@ -13,7 +13,7 @@ st.title("🔍 Verslo problemų registravimo ir analizės sistema")
 sheet_id = "1aWqYAcEuAEyV4vbnvsZt475Dc4pg2lNe_EoNX-G-rtY"
 worksheet_name = "Sheet1"
 
-# Prisijungimas
+# Prisijungimas prie Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
 client = gspread.authorize(credentials)
@@ -26,7 +26,7 @@ df = pd.DataFrame(records)
 if df.empty:
     df = pd.DataFrame(columns=headers)
 
-# Forma
+# Forma naujai problemai
 st.markdown("### ✏️ Naujos problemos registravimas")
 with st.form("problem_form"):
     col1, col2, col3 = st.columns(3)
@@ -65,7 +65,7 @@ with st.form("problem_form"):
         st.success("✅ Problema įregistruota sėkmingai!")
         st.rerun()
 
-# Rodymas
+# Rodomas sąrašas ir analizė
 if not df.empty:
     st.markdown("### 📋 Registruotų problemų sąrašas")
     st.dataframe(df, use_container_width=True)
@@ -73,7 +73,6 @@ if not df.empty:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Atsisiųsti kaip CSV", csv, "problemos.csv", "text/csv")
 
-    # Analizė
     st.markdown("### 📊 Analizė")
     if "Data" in df.columns:
         df["Data"] = pd.to_datetime(df["Data"])
@@ -103,15 +102,15 @@ if not df.empty:
 
     # Dirbtinio intelekto analizė
     st.markdown("### 🤖 Dirbtinio intelekto įžvalgos")
-    openai.api_key = st.secrets["openai"]["api_key"]
+    try:
+        client_ai = OpenAI(api_key=st.secrets["openai_api_key"])
 
-    if st.button("Generuoti AI analizę"):
-        try:
+        if st.button("Generuoti AI analizę"):
             prompt = (
                 "Pateik verslo analizę ir įžvalgas, remiantis šia lentele:\n\n" +
                 df.tail(20).to_csv(index=False)
             )
-            response = openai.ChatCompletion.create(
+            response = client_ai.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "Tu esi patyręs verslo analitikas, kuris padeda suprasti problemas ir siūlo rekomendacijas."},
@@ -120,11 +119,9 @@ if not df.empty:
                 temperature=0.7
             )
             st.success("🧠 AI analizė:")
-            st.write(response["choices"][0]["message"]["content"])
-        except Exception as e:
-            st.error(f"Klaida generuojant analizę: {e}")
+            st.write(response.choices[0].message.content)
+
+    except Exception as e:
+        st.error(f"Klaida generuojant analizę: {e}")
 else:
     st.info("🔎 Kol kas nėra registruotų problemų.")
-
-
-
