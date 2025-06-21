@@ -1,8 +1,9 @@
 streamlit
+openai>=1.0.0
 pandas
+matplotlib
 gspread
 google-auth
-matplotlib
-openai
+
 
 
