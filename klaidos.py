@@ -1,9 +1,12 @@
+with open("/mnt/data/klaidos_ai_analize.py", "w", encoding="utf-8") as f:
+    f.write("""
 import streamlit as st
 import pandas as pd
 import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
+import openai
 
 st.set_page_config(page_title="Problemų registravimo sistema", layout="wide")
 st.title("🔍 Verslo problemų registravimo ir analizės sistema")
@@ -99,5 +102,31 @@ if not df.empty:
     if "Ar buvo informuota laiku?" in df.columns:
         if "Ne" in df["Ar buvo informuota laiku?"].values:
             st.warning("⚠️ Yra problemų, apie kurias nebuvo informuota laiku. Reikalinga komunikacijos stiprinimas.")
+
+    # Dirbtinio intelekto analizė
+    st.markdown("### 🤖 Dirbtinio intelekto įžvalgos")
+    openai.api_key = st.secrets["openai_api_key"]
+
+    if st.button("Generuoti AI analizę"):
+        try:
+            prompt = (
+                "Pateik verslo analizę ir įžvalgas, remiantis šia lentele:\n\n" +
+                df.tail(20).to_csv(index=False)
+            )
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "Tu esi patyręs verslo analitikas, kuris padeda suprasti problemas ir siūlo rekomendacijas."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7
+            )
+            st.success("🧠 AI analizė:")
+            st.write(response["choices"][0]["message"]["content"])
+        except Exception as e:
+            st.error(f"Klaida generuojant analizę: {e}")
 else:
     st.info("🔎 Kol kas nėra registruotų problemų.")
+""")
+
+"/mnt/data/klaidos_ai_analize.py"
