@@ -103,7 +103,7 @@ if not df.empty:
 
     # Dirbtinio intelekto analizė
     st.markdown("### 🤖 Dirbtinio intelekto įžvalgos")
-    openai.api_key = st.secrets["openai_api_key"]
+    openai.api_key = st.secrets["openai"]["api_key"]
 
     if st.button("Generuoti AI analizę"):
         try:
