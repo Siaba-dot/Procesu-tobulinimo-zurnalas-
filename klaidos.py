@@ -128,4 +128,4 @@ else:
     st.info("🔎 Kol kas nėra registruotų problemų.")
 """)
 
-"/mnt/data/klaidos_ai_analize.py"
+
