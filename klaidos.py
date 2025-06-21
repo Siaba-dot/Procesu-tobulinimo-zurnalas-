@@ -9,24 +9,23 @@ from openai import OpenAI
 st.set_page_config(page_title="Problemų registravimo sistema", layout="wide")
 st.title("🔍 Verslo problemų registravimo ir analizės sistema")
 
-# Google Sheets nustatymai
+# 🔐 Google Sheets prisijungimas
 sheet_id = "1aWqYAcEuAEyV4vbnvsZt475Dc4pg2lNe_EoNX-G-rtY"
 worksheet_name = "Sheet1"
-
-# Prisijungimas prie Google Sheets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
 credentials = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
 client = gspread.authorize(credentials)
 worksheet = client.open_by_key(sheet_id).worksheet(worksheet_name)
 
-# Gauti duomenis
+# 📥 Gauti esamus duomenis
 records = worksheet.get_all_records()
 headers = worksheet.row_values(1)
 df = pd.DataFrame(records)
 if df.empty:
     df = pd.DataFrame(columns=headers)
 
-# Forma naujai problemai
+# 📝 Forma naujai problemai
 st.markdown("### ✏️ Naujos problemos registravimas")
 with st.form("problem_form"):
     col1, col2, col3 = st.columns(3)
@@ -65,7 +64,7 @@ with st.form("problem_form"):
         st.success("✅ Problema įregistruota sėkmingai!")
         st.rerun()
 
-# Rodomas sąrašas ir analizė
+# 📋 Rodyti esamus duomenis ir analizę
 if not df.empty:
     st.markdown("### 📋 Registruotų problemų sąrašas")
     st.dataframe(df, use_container_width=True)
@@ -73,6 +72,7 @@ if not df.empty:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Atsisiųsti kaip CSV", csv, "problemos.csv", "text/csv")
 
+    # 📊 Analizė
     st.markdown("### 📊 Analizė")
     if "Data" in df.columns:
         df["Data"] = pd.to_datetime(df["Data"])
@@ -100,10 +100,11 @@ if not df.empty:
         if "Ne" in df["Ar buvo informuota laiku?"].values:
             st.warning("⚠️ Yra problemų, apie kurias nebuvo informuota laiku. Reikalinga komunikacijos stiprinimas.")
 
-    # Dirbtinio intelekto analizė
+    # 🤖 Dirbtinio intelekto analizė
     st.markdown("### 🤖 Dirbtinio intelekto įžvalgos")
+
     try:
-        client_ai = OpenAI(api_key=st.secrets["openai_api_key"])
+        client_ai = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
         if st.button("Generuoti AI analizę"):
             prompt = (
@@ -123,5 +124,6 @@ if not df.empty:
 
     except Exception as e:
         st.error(f"Klaida generuojant analizę: {e}")
+
 else:
     st.info("🔎 Kol kas nėra registruotų problemų.")
