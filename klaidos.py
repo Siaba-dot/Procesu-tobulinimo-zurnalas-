@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import datetime
@@ -126,6 +125,6 @@ if not df.empty:
             st.error(f"Klaida generuojant analizę: {e}")
 else:
     st.info("🔎 Kol kas nėra registruotų problemų.")
-""")
+
 
 
