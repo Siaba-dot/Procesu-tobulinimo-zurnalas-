@@ -90,11 +90,17 @@ if not df.empty:
         df_pas = df[df["Metai-mėnuo"] == pasirinktas]
 
         if not df_pas.empty and "Skyrius" in df_pas.columns:
-            fig2, ax2 = plt.subplots()
-            df_pas["Skyrius"].value_counts().plot(kind="pie", autopct="%1.1f%%", ax=ax2)
-            ax2.set_ylabel("")
-            ax2.set_title(f"🎯 Klaidos pagal skyrių ({pasirinktas})")
-            st.pyplot(fig2)
+            skyriai_count = df_pas["Skyrius"].value_counts()
+
+            if len(skyriai_count) > 0:
+                fig2, ax2 = plt.subplots()
+                skyriai_count.plot(kind="pie", autopct="%1.1f%%", ax=ax2, startangle=90)
+                ax2.set_ylabel("")
+                ax2.set_title(f"🎯 Klaidos pagal skyrių ({pasirinktas})")
+                st.pyplot(fig2)
+            else:
+                st.info(f"Pasirinktame mėnesyje ({pasirinktas}) nėra skyriaus duomenų klaidų analizei.")
+
 
     if "Ar buvo informuota laiku?" in df.columns:
         if "Ne" in df["Ar buvo informuota laiku?"].values:
